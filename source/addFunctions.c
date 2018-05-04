@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include "mySimpleComputer.h"
 #include <stdlib.h>
-#include <math.h>
 
 extern struct memCell current;
 extern int accumulator; 
@@ -23,10 +22,10 @@ void printInterface(){
 	for (int i = 0; i < 10; i++){
 		for (int j = 0; j < 10; j++){		
 			sc_memoryGet(y, tmp);
-			if (*tmp * -1 > 0)
-				printf("-%04d ", abs(*tmp));
+			if ((*tmp & 16384) == 0)
+				printf("+%04x ", *tmp);
 			else
-				printf("+%04d ", *tmp);
+				printf(" %04x ", *tmp);
 			y++;
 		}
 		mt_gotoXY(2 ,2 + i + 1);
@@ -70,6 +69,7 @@ void printInterface(){
 			printf("%s  - %s", buf, keys[i]);
 	}
 	//
+	printReg();	
 	mt_gotoXY(1, 23);
 }
 
@@ -78,14 +78,16 @@ void printCellBig(){
 	bc_box(1, 13, 42, 22);
 	int buf;
 	sc_memoryGet(current.pointer, &buf);
-	if (buf >= 0)
+	if ((buf & 16384) == 0)
 		bc_printbigchar('P', 2, 14, cl_green, cl_default);
 	else {
-		bc_printbigchar('M', 2, 14, cl_green, cl_default);
-		buf *= -1;
+		for (int i = 0; i < 8; i++){
+			mt_gotoXY(2, 14 + i);
+			printf("        ");
+		}
 	}	
 	char ints[4];
-	sprintf(ints, "%04d", buf);
+	sprintf(ints, "%04x", buf);
 	int x = 10;	
 	for (int i = 0; i < 4; i++){
 		bc_printbigchar(ints[i], x, 14, cl_green, cl_default);
@@ -98,11 +100,10 @@ void paintCell(int x, int y, int pointer, enum colors col){
 	mt_setbgcolor(col);
 	int value;
 	sc_memoryGet(pointer, &value);
-	if (value > -1)
-		printf("+%04d ", value);
+	if ((value & 16384) == 0)
+		printf("+%04x ", value);
 	else {
-		value *= -1;
-		printf("-%04d ", value);
+		printf(" %04x ", value);
 	}
 	mt_setbgcolor(cl_default);
 	printCellBig();
@@ -128,12 +129,10 @@ void paintAcc(int y){
 		mt_setbgcolor(cl_default);	
 	else
 		mt_setbgcolor(cl_red);
-	if (accumulator > -1)
-		printf("     +%04d     ", accumulator);
-	else {		
-		accumulator *= -1;
-		printf("     -%04d     ", accumulator);
-		accumulator *= -1;
+	if ((accumulator & 16384) == 0)
+		printf("     +%04x     ", accumulator);
+	else {
+		printf("     %04x     ", accumulator);
 	}
 	mt_setbgcolor(cl_default);
 }
@@ -148,7 +147,9 @@ void paintInst(int y){
 }
 
 void printReg(){
-	char out[6] = "";
+	char out[6];
+	for (int i = 0; i < 6; i++)
+		out[i] = ' ';
 	int y = 0;
 	sc_regGet(O, &y);
 	if (y == 1)

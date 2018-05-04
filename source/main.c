@@ -13,41 +13,40 @@
 uint8_t flags;
 uint16_t instructionCounter;
 int accumulator;
-int inInstr = 0;   // Проверка, находится ли курсор в счетчике команд
 struct memCell current;
 
 void signalhandler(int signo){
 	if (instructionCounter < 99)
 		instructionCounter += 1;
-	if (inInstr != 1)
-		paintInst(0);
-	else
-		paintInst(1);
+	paintInst(0);
+}
+
+void sghandler(int signo){
+	sc_regSet(T, 1);
+	printReg();
+	sc_memoryLoad("data/RAM0.b");
+	printInterface();
+	current.x = 0; 
+	current.y = 0;
+	current.pointer = 0;
+	paintCell(current.x, current.y, current.pointer, cl_red);
 }
 
 int main(){
 	sc_memoryInit();
 	mt_clrscr();
+	int tact = 0;
+	sc_regSet(T, 1);  //игнорирование тактовых импульсов
+	sc_regGet(T, &tact);
 	printInterface();
-	paintCell(current.x, current.y, current.pointer, cl_red);	
+	paintCell(current.x, current.y, current.pointer, cl_red);
+	signal(SIGUSR1, sghandler);//Установка обработчика для SIGUSR1
 	int a;
 	int val;
 	int inAcc = 0;    // Проверка, находится ли курсор в аккумуляторе
 	rk_mytermsave();
-	int tact = 0;
-	//sc_regSet(T, 1);  //игнорирование тактовых импульсов
-	sc_regGet(T, &tact);
-	printReg();
-	if (tact != 1){
-		static struct itimerval nval;
-		signal (SIGALRM, signalhandler);
-		nval.it_interval.tv_sec = 2;
-		nval.it_interval.tv_usec = 0;
-		nval.it_value.tv_sec = 2;
-		nval.it_value.tv_usec = 0;
-		setitimer(ITIMER_REAL, &nval, NULL);	
-	}
-	while (a != KEY_i){
+	while (1){
+		paintInst(0);
 		rk_readkey(&a);
 		sc_regGet(T, &tact);
 		if (tact == 1)
@@ -63,59 +62,35 @@ int main(){
 				}				
 				break;
 			case KEY_down:
-				if (inAcc != 1 && inInstr != 1)
+				if (inAcc != 1)
 					changePoint(10);
-				if (inAcc == 1){
-					paintInst(1);
-					paintAcc(0);
-					inAcc = 0;
-					inInstr = 1;		
-				}
 				break;	
 			case KEY_left:
 				if (inAcc == 1){
 					inAcc = 0;
 					paintAcc(0);
 					paintCell(current.x, current.y, current.pointer, cl_red);
-				} else if (inInstr == 1){
-					inInstr = 0;
-					paintInst(0);
-					paintCell(current.x, current.y, current.pointer, cl_red);
 				} else
 					changePoint(-1);
 				break;
 			case KEY_up:
-				if (inAcc != 1 && inInstr != 1)
+				if (inAcc != 1)
 					changePoint(-10);
-				if (inInstr == 1){
-					paintInst(0);
-					paintAcc(1);
-					inAcc = 1;
-					inInstr = 0;		
-				}
 				break;
 			case KEY_another:
 					mt_gotoXY(1, 23);
 				if (inAcc == 1){
 					scanf("%d", &val);
-					if (val < 10000 && val > -10000){
+					if (val < 32768 && val > 0){
 						accumulator = val;
 						paintAcc(1);
 					}
 					mt_gotoXY(1, 23);
 					printf("                                   \n         ");
-				} else if (inInstr == 1){
-					scanf("%d", &val);
-					if (val < 100 && val > -1){
-						instructionCounter = val;
-						paintInst(1);
-					}
-					mt_gotoXY(1, 23);
-					printf("                                   \n         ");
-				}else {
+				} else {
 					printf("Input value for %d:\n", current.pointer);
 					scanf("%d", &val);
-					if (val < 10000 && val > -10000){
+					if (val < 32768 && val > 0){
 						sc_memorySet(current.pointer, val);
 						paintCell(current.x, current.y, current.pointer, cl_red);
 						mt_gotoXY(1, 23);
@@ -134,10 +109,22 @@ int main(){
 			case KEY_q:    // временно
 				setitimer(ITIMER_REAL, 0, NULL);
 				break;
+			case KEY_r:
+				sc_regSet(T, 0);
+				printReg();
+				static struct itimerval nval;
+				signal (SIGALRM, signalhandler);
+				nval.it_interval.tv_sec = 2;
+				nval.it_interval.tv_usec = 0;
+				nval.it_value.tv_sec = 2;
+				nval.it_value.tv_usec = 0;
+				setitimer(ITIMER_REAL, &nval, NULL);
+			case KEY_t:
+				break;	
 			case KEY_f5:
 				printf("Input value for accumulator:\n");
 					scanf("%d", &val);
-					if (val < 10000 && val > -10000){	
+					if (val < 32768 && val > 0){	
 						accumulator = val;
 						paintAcc(0);
 					}
@@ -153,7 +140,10 @@ int main(){
 					}
 				mt_gotoXY(1, 23);
 				printf("                                      \n         ");      
-				break;	
+				break;
+			case KEY_i:
+				raise(SIGUSR1);
+				break;
 		}	
 	}
 	mt_gotoXY(1, 23);

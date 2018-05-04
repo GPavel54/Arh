@@ -17,4 +17,4 @@ computer :
 clean:
 	rm -rf *.o
 withcode: 
-	gcc -Wall -o comp temp/main.o temp/terminal.o temp/myBigChars.o temp/mySimpleComputer.o temp/myReadkey.o -g
+	gcc -Wall -o comp temp/main.o temp/terminal.o temp/myBigChars.o temp/mySimpleComputer.o temp/myReadkey.o temp/addFunctions.o -g
