@@ -1,11 +1,11 @@
 #ifndef MYCO
 #define MYCO
 //Определение масок регистров
-#define O 0x1
-#define P 0x2
-#define M 0x4
-#define T 0x8
-#define E 0x10
+#define O 0x1   //  деление на ноль
+#define P 0x2   //  переполнение
+#define M 0x4   //  выход за границы памяти
+#define T 0x8   //  игнорирование тактовых импульсов
+#define E 0x10  //  неверная команда
 
 struct memCell{
 	int pointer;

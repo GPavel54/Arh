@@ -11,4 +11,5 @@ void paintInst(int y);
 void printCellBig();
 void printInterface();
 void printReg();
+int CU();
 #endif

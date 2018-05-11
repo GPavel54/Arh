@@ -73,8 +73,7 @@ int sc_regGet(int reg, int * value){
 }
 
 int sc_commandEncode(int command, int operand, int * value){
-	if (command > 76 || command < 10){
-		flags |= E;		
+	if (command > 76 || command < 10){	
 		return -1;
 	}
 	if (operand > 127 || operand < 0)
@@ -90,7 +89,12 @@ int sc_commandDecode(int value, int * command, int * operand){
 	unsigned int u = value;
 	*operand = u & 0x7f;
 	u = value >> 7;
-	*command = u & 0x7f;
+	int com = 0;
+	com = u & 0x7f;
+	if (com == 10 || com == 11 || com == 20 || com == 21 || (com < 34 && com > 29) || (com < 44 && com > 39) )
+	*command = com;
+	else
+		return -1;
 	return 0;
 }
 

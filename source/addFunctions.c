@@ -171,3 +171,59 @@ void printReg(){
 	printf("%s", out);
 	mt_gotoXY(1, 23);
 }
+
+int CU(){
+	int value, error = 0;
+	error = sc_memoryGet(current.pointer, &value);
+	if (error == -1){
+		sc_regSet(M, 1);
+		return -1;
+	}
+	int command, operand;
+	if ((value & 16384) != 0){	
+		return 0;
+	}
+	error = sc_commandDecode(value, &command, &operand);
+	if (error = -1){
+		/*mt_gotoXY(80,2);
+		printf("%d;", (value & 16384));*/
+		sc_regSet(E, 1);
+		return -1;
+	}
+	
+}
+
+int ALU (int command, int operand){
+	if (command == 30)
+		if ((accumulator + operand) < 0x7fff){
+			accumulator += operand;
+			return 0;
+		}else{
+			sc_regSet(P, 1);
+			return -1;
+		}
+	if (command == 31)
+		if ((accumulator - operand) >= 0){
+			accumulator -= operand;
+			return 0;
+		}else {
+			sc_regSet(P, 1);
+			return -1;		
+		}
+	if (command == 32){
+		accumulator := operand;
+		return 0;	
+	}
+	if (command == 33)
+		if (accumulator *= operand < 0x7fff){
+			accumulator *= operand;
+			return 0;		
+		} else{
+			sc_regSet(P, 1);
+			return -1;
+		}
+}
+
+
+
+

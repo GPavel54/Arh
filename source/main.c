@@ -14,22 +14,44 @@ uint8_t flags;
 uint16_t instructionCounter;
 int accumulator;
 struct memCell current;
+int stop = 0;
 
 void signalhandler(int signo){
-	if (instructionCounter < 99)
-		instructionCounter += 1;
-	paintInst(0);
+	sc_regSet(T, 0);
+	printReg();	
+	int error = CU();
+	if (error != 0){
+		printReg();
+		stop = 0;
+		return;		
+	}
+	if (instructionCounter < 99){
+		changePoint(1);
+	}
+	else{
+		stop = 0;
+		sc_regSet(M, 1);
+		return;
+	}
 }
 
 void sghandler(int signo){
 	sc_regSet(T, 1);
+	sc_regSet(P, 0);
+	sc_regSet(O, 0);
+	sc_regSet(E, 0);
+	sc_regSet(M, 0);
 	printReg();
 	sc_memoryLoad("data/RAM0.b");
 	printInterface();
 	current.x = 0; 
 	current.y = 0;
 	current.pointer = 0;
+	instructionCounter = 0;
+	paintInst(0);
 	paintCell(current.x, current.y, current.pointer, cl_red);
+	mt_gotoXY(1, 23);
+	printf("                        \n         ");
 }
 
 int main(){
@@ -43,7 +65,6 @@ int main(){
 	signal(SIGUSR1, sghandler);//Установка обработчика для SIGUSR1
 	int a;
 	int val;
-	int inAcc = 0;    // Проверка, находится ли курсор в аккумуляторе
 	rk_mytermsave();
 	while (1){
 		paintInst(0);
@@ -53,50 +74,28 @@ int main(){
 			setitimer(ITIMER_REAL, 0, NULL);
 		switch (a){
 			case KEY_right:
-				if (current.x != 9)
-					changePoint(1);
-				else{
-					paintCell(current.x, current.y, current.pointer, cl_default);
-					paintAcc(1);
-					inAcc = 1;
-				}				
+				changePoint(1);				
 				break;
 			case KEY_down:
-				if (inAcc != 1)
-					changePoint(10);
+				changePoint(10);
 				break;	
 			case KEY_left:
-				if (inAcc == 1){
-					inAcc = 0;
-					paintAcc(0);
-					paintCell(current.x, current.y, current.pointer, cl_red);
-				} else
-					changePoint(-1);
+				changePoint(-1);
 				break;
 			case KEY_up:
-				if (inAcc != 1)
-					changePoint(-10);
+				changePoint(-10);
 				break;
 			case KEY_another:
+				mt_gotoXY(1, 23);
+				printf("Input value for %d:\n", current.pointer);
+				scanf("%d", &val);
+				if (val < 32768 && val > 0){
+					sc_memorySet(current.pointer, val);
+					paintCell(current.x, current.y, current.pointer, cl_red);
 					mt_gotoXY(1, 23);
-				if (inAcc == 1){
-					scanf("%d", &val);
-					if (val < 32768 && val > 0){
-						accumulator = val;
-						paintAcc(1);
-					}
-					mt_gotoXY(1, 23);
-					printf("                                   \n         ");
-				} else {
-					printf("Input value for %d:\n", current.pointer);
-					scanf("%d", &val);
-					if (val < 32768 && val > 0){
-						sc_memorySet(current.pointer, val);
-						paintCell(current.x, current.y, current.pointer, cl_red);
-						mt_gotoXY(1, 23);
-						printf("                        \n         ");
-					}
+					printf("                        \n         ");
 				}
+				
 				break;
 			case KEY_s:
 				sc_memorySave("data/RAM.b");	
@@ -112,13 +111,19 @@ int main(){
 			case KEY_r:
 				sc_regSet(T, 0);
 				printReg();
-				static struct itimerval nval;
+				static struct itimerval nval;  // установка таймера
 				signal (SIGALRM, signalhandler);
 				nval.it_interval.tv_sec = 2;
 				nval.it_interval.tv_usec = 0;
-				nval.it_value.tv_sec = 2;
+				nval.it_value.tv_sec = 1;
 				nval.it_value.tv_usec = 0;
-				setitimer(ITIMER_REAL, &nval, NULL);
+				setitimer(ITIMER_REAL, &nval, NULL); //конец установки таймера
+				stop = 1;				
+				while (stop == 1)
+					continue;
+				setitimer(ITIMER_REAL, 0, NULL);
+				sc_regSet(T, 1);
+				printReg();		
 			case KEY_t:
 				break;	
 			case KEY_f5:
