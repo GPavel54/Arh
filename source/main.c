@@ -15,6 +15,7 @@ uint16_t instructionCounter;
 int accumulator;
 struct memCell current;
 int stop = 0;
+int needIncrement = 0;
 
 void signalhandler(int signo){
 	sc_regSet(T, 0);
@@ -25,14 +26,16 @@ void signalhandler(int signo){
 		stop = 0;
 		return;		
 	}
-	if (instructionCounter < 99){
-		changePoint(1);
-	}
-	else{
-		stop = 0;
-		sc_regSet(M, 1);
-		return;
-	}
+	paintAcc(0);
+	if (needIncrement == 0)
+		if (instructionCounter < 99){
+			changePoint(1);
+		}
+		else{
+			stop = 0;
+			sc_regSet(M, 1);
+			return;
+		}
 }
 
 void sghandler(int signo){
@@ -88,14 +91,17 @@ int main(){
 			case KEY_another:
 				mt_gotoXY(1, 23);
 				printf("Input value for %d:\n", current.pointer);
-				scanf("%d", &val);
-				if (val < 32768 && val > 0){
+				int wInp = scanf("%d", &val);
+				if (val < 32768 && val > -32768 && wInp != 0){
 					sc_memorySet(current.pointer, val);
 					paintCell(current.x, current.y, current.pointer, cl_red);
-					mt_gotoXY(1, 23);
-					printf("                        \n         ");
 				}
-				
+				scanf("%*[^\n]");
+				fflush(stdin);
+				mt_gotoXY(1, 23);
+				printf("                        \n         ");
+				val = 0;
+				wInp = 0;
 				break;
 			case KEY_s:
 				sc_memorySave("data/RAM.b");	
@@ -124,25 +130,43 @@ int main(){
 				setitimer(ITIMER_REAL, 0, NULL);
 				sc_regSet(T, 1);
 				printReg();		
-			case KEY_t:
+			case KEY_t: ;
+				int e;
+				e = CU();
+				if (e != 0)
+					printReg();
+				if (needIncrement == 0)
+					changePoint(1);
+				needIncrement = 0;
 				break;	
 			case KEY_f5:
 				printf("Input value for accumulator:\n");
-					scanf("%d", &val);
-					if (val < 32768 && val > 0){	
+					wInp = scanf("%d", &val);
+					if (val < 32768 && val > -32768 && wInp != 0){	
 						accumulator = val;
 						paintAcc(0);
 					}
+				scanf("%*[^\n]");
+				fflush(stdin);
+				wInp = 0;
 				mt_gotoXY(1, 23);
 				printf("                             \n         ");
 				break;
 			case KEY_f6:
 				printf("Input value for instructionCounter:\n");
-				scanf("%d", &val);
-				if (val < 100 && val > -1){
+				wInp = scanf("%d", &val);
+				if (val < 100 && val > -1 && wInp != 0){
 						instructionCounter = val;
 						paintInst(0);
+						paintCell(current.x, current.y, current.pointer, cl_default);
+						current.x = val % 10;
+						current.y = val / 10;
+						current.pointer = val;
+						paintCell(current.x, current.y, current.pointer, cl_red);
 					}
+				scanf("%*[^\n]");
+				fflush(stdin);
+				wInp = 0;
 				mt_gotoXY(1, 23);
 				printf("                                      \n         ");      
 				break;

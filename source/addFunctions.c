@@ -7,6 +7,7 @@ extern struct memCell current;
 extern int accumulator; 
 extern uint16_t instructionCounter;
 extern uint8_t flags;	
+extern int needIncrement;
 
 void printInterface(){
 	char keys[7][12] = {"load", "save", "run", "step", "reset", "accumulator", "instrCount"};
@@ -17,15 +18,22 @@ void printInterface(){
 	printf(" Memory ");
 	mt_gotoXY(2, 2);
 	int y = 0;
-	int * tmp;
-	tmp = (int *)malloc(sizeof(int *));
+	int tmp;
 	for (int i = 0; i < 10; i++){
 		for (int j = 0; j < 10; j++){		
-			sc_memoryGet(y, tmp);
-			if ((*tmp & 16384) == 0)
-				printf("+%04x ", *tmp);
-			else
-				printf(" %04x ", *tmp);
+			sc_memoryGet(y, &tmp);
+			int otr = 0;
+			if (tmp < 0){
+				otr = 1;
+				tmp = ~tmp + 1;			
+			}
+			if ((tmp & 16384) == 0 && otr == 0)
+				printf("+%04x ", tmp);
+			else if (otr == 0)
+				printf(" %04x ", tmp);
+			else{
+				printf("-%04x ", tmp);
+			}
 			y++;
 		}
 		mt_gotoXY(2 ,2 + i + 1);
@@ -78,14 +86,21 @@ void printCellBig(){
 	bc_box(1, 13, 42, 22);
 	int buf;
 	sc_memoryGet(current.pointer, &buf);
-	if ((buf & 16384) == 0)
+	int otr = 0;
+	if (buf < 0){
+		otr = 1;
+		buf = ~buf + 1;
+	}
+	if ((buf & 16384) == 0 && otr == 0)
 		bc_printbigchar('P', 2, 14, cl_green, cl_default);
-	else {
+	else if (otr == 0){
 		for (int i = 0; i < 8; i++){
 			mt_gotoXY(2, 14 + i);
 			printf("        ");
 		}
-	}	
+	} else{
+		bc_printbigchar('M', 2, 14, cl_green, cl_default);
+	}
 	char ints[4];
 	sprintf(ints, "%04x", buf);
 	int x = 10;	
@@ -100,10 +115,17 @@ void paintCell(int x, int y, int pointer, enum colors col){
 	mt_setbgcolor(col);
 	int value;
 	sc_memoryGet(pointer, &value);
-	if ((value & 16384) == 0)
+	int otr = 0;
+	if (value < 0){
+		otr = 1;
+		value *= -1;
+	}
+	if ((value & 16384) == 0 && otr == 0)
 		printf("+%04x ", value);
-	else {
+	else if (otr == 0){
 		printf(" %04x ", value);
+	}else {
+		printf("-%04x ", value);
 	}
 	mt_setbgcolor(cl_default);
 	printCellBig();
@@ -129,10 +151,15 @@ void paintAcc(int y){
 		mt_setbgcolor(cl_default);	
 	else
 		mt_setbgcolor(cl_red);
-	if ((accumulator & 16384) == 0)
+	int otr = 0;
+	if (accumulator < 0)
+		otr = accumulator * -1;
+	if ((accumulator & 16384) == 0 && otr == 0)
 		printf("     +%04x     ", accumulator);
-	else {
+	else if (otr == 0){
 		printf("     %04x     ", accumulator);
+	}else{
+		printf("    -%04x     ", otr);
 	}
 	mt_setbgcolor(cl_default);
 }
@@ -172,6 +199,44 @@ void printReg(){
 	mt_gotoXY(1, 23);
 }
 
+int ALU (int command, int operand){
+	if (command == 30)
+		if (((accumulator + operand) <= 0x7fff) && ((accumulator + operand) >= -0x7fff)){
+			accumulator += operand;
+			return 0;
+		}else{
+			sc_regSet(P, 1);
+			return -1;
+		}
+	if (command == 31)
+		if (((accumulator - operand) <= 0x7fff) && ((accumulator - operand) >= -0x7fff)){
+			accumulator -= operand;
+			return 0;
+		}else {
+			sc_regSet(P, 1);
+			return -1;		
+		}
+	if (command == 32){
+		accumulator /= operand;
+		return 0;	
+	}
+	if (command == 33)
+		if (((accumulator * operand) <= 0x7fff) && ((accumulator * operand) >= -0x7fff)){
+			accumulator *= operand;
+			return 0;		
+		} else{
+			sc_regSet(P, 1);
+			return -1;
+		}
+	if (command == 53){
+		if (operand < 0)
+			operand *= -1;
+		accumulator |= operand;
+		return 0;	
+	}
+	return -1;
+}
+
 int CU(){
 	int value, error = 0;
 	error = sc_memoryGet(current.pointer, &value);
@@ -184,44 +249,59 @@ int CU(){
 		return 0;
 	}
 	error = sc_commandDecode(value, &command, &operand);
-	if (error = -1){
-		/*mt_gotoXY(80,2);
-		printf("%d;", (value & 16384));*/
+	if (error != 0){
 		sc_regSet(E, 1);
 		return -1;
 	}
-	
-}
-
-int ALU (int command, int operand){
-	if (command == 30)
-		if ((accumulator + operand) < 0x7fff){
-			accumulator += operand;
-			return 0;
-		}else{
-			sc_regSet(P, 1);
-			return -1;
+	if ((command >= 30 && command <= 33) || command == 53)
+		return ALU(command, operand);
+	else{
+		if (command == 10){
+			mt_gotoXY(1, 23);
+			int val = 0;
+			scanf("%d", &val);
+			mt_gotoXY(1, 23);
+			printf("                             \n         ");
+			if (val <= 0x7fff && val >=0){
+				int er = 0;				
+				er = sc_memorySet(operand, val);
+				if (er != 0)
+					return -1;				
+				paintCell(operand % 10, operand / 10, operand, cl_default);
+				return 0;
+			} else{
+				sc_regSet(P,1);
+				return -1;	
+			}
 		}
-	if (command == 31)
-		if ((accumulator - operand) >= 0){
-			accumulator -= operand;
+		if (command == 11){
+			int val = 0, er = 0;		
+			er = sc_memoryGet(operand, &val);
+			if (er != 0)
+				return -1;
+			mt_gotoXY(1, 23);
+			if ((val & 16384) != 0)
+				printf("Value = %x", val);	
+			else 
+				printf("Value = +%x", val);
 			return 0;
-		}else {
-			sc_regSet(P, 1);
-			return -1;		
 		}
-	if (command == 32){
-		accumulator := operand;
-		return 0;	
+		if (command == 40){
+			if (operand < 100 && operand >=0){
+				paintCell(current.x, current.y, current.pointer, cl_default);
+				needIncrement = 1;
+				current.pointer = operand;
+				current.x = operand % 10;
+				current.y = operand / 10;
+				instructionCounter = operand;
+				paintCell(current.x, current.y, current.pointer, cl_red);
+				return 0;
+			}else{
+				sc_regSet(M, 1);
+				return -1;			
+			}
+		}
 	}
-	if (command == 33)
-		if (accumulator *= operand < 0x7fff){
-			accumulator *= operand;
-			return 0;		
-		} else{
-			sc_regSet(P, 1);
-			return -1;
-		}
 }
 
 

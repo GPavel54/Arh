@@ -1,4 +1,5 @@
 #include "mySimpleComputer.h"
+#include "terminal.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -18,15 +19,19 @@ int sc_memoryInit(){
 }
 
 int sc_memorySet(int address, int value){
-	if (address > 99 || address < 0)
+	if (address > 99 || address < 0){
+		sc_regSet(M, 1);
 		return -1;
+	}
 	mem[address] = value;
 	return 0;
 }
 
 int sc_memoryGet(int address, int * value){
-	if (address > 99 || address < 0)
+	if (address > 99 || address < 0){
+		sc_regSet(M, 1);
 		return -1;
+	}
 	*value = mem[address];
 	return 0;
 }
@@ -73,26 +78,40 @@ int sc_regGet(int reg, int * value){
 }
 
 int sc_commandEncode(int command, int operand, int * value){
-	if (command > 76 || command < 10){	
+	int ret = 1;	
+	if (command == 10 || command == 53 || command == 11 || command == 20 || command == 21 || (command < 34 && command > 29) || (command < 44 && command > 39) )
+		ret = 0;
+	if (ret != 0)
 		return -1;
+	if (operand > 127 || operand < -127)
+		return -1;
+	int otr = 0;	
+	if (operand < 0){
+		otr = 1;
+		operand *= -1;
 	}
-	if (operand > 127 || operand < 0)
-		return 18;
 	*value = 0;	
 	*value += command;
 	*value <<= 7;
 	*value += operand;
+	if (otr == 1)
+		*value *= -1;	
 	return 0;
 }
 
 int sc_commandDecode(int value, int * command, int * operand){
+	int otr = 0;	
+	if (value < 0)
+		otr = 1;
 	unsigned int u = value;
 	*operand = u & 0x7f;
+	if (otr == 1)
+		*operand *= -1;
 	u = value >> 7;
 	int com = 0;
 	com = u & 0x7f;
-	if (com == 10 || com == 11 || com == 20 || com == 21 || (com < 34 && com > 29) || (com < 44 && com > 39) )
-	*command = com;
+	if (com == 10 || com == 53 || com == 11 || com == 20 || com == 21 || (com < 34 && com > 29) || (com < 44 && com > 39) )
+		*command = com;
 	else
 		return -1;
 	return 0;
