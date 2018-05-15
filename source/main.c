@@ -21,6 +21,11 @@ void signalhandler(int signo){
 	sc_regSet(T, 0);
 	printReg();	
 	int error = CU();
+	if (needIncrement == 2){
+		printReg();
+		stop = 0;
+		return;
+	}
 	if (error != 0){
 		printReg();
 		stop = 0;
@@ -36,6 +41,7 @@ void signalhandler(int signo){
 			sc_regSet(M, 1);
 			return;
 		}
+	needIncrement = 0;
 }
 
 void sghandler(int signo){
@@ -92,7 +98,7 @@ int main(){
 				mt_gotoXY(1, 23);
 				printf("Input value for %d:\n", current.pointer);
 				int wInp = scanf("%d", &val);
-				if (val < 32768 && val > -32768 && wInp != 0){
+				if (val < 32768 && val >= 0 && wInp != 0){
 					sc_memorySet(current.pointer, val);
 					paintCell(current.x, current.y, current.pointer, cl_red);
 				}
@@ -142,7 +148,7 @@ int main(){
 			case KEY_f5:
 				printf("Input value for accumulator:\n");
 					wInp = scanf("%d", &val);
-					if (val < 32768 && val > -32768 && wInp != 0){	
+					if (val < 32768 && val >= 0 && wInp != 0){	
 						accumulator = val;
 						paintAcc(0);
 					}

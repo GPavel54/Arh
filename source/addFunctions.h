@@ -12,4 +12,5 @@ void printCellBig();
 void printInterface();
 void printReg();
 int CU();
+void printOper(int p1, int p2);
 #endif

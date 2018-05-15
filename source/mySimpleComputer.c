@@ -1,5 +1,6 @@
 #include "mySimpleComputer.h"
 #include "terminal.h"
+#include "addFunctions.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -83,30 +84,18 @@ int sc_commandEncode(int command, int operand, int * value){
 		ret = 0;
 	if (ret != 0)
 		return -1;
-	if (operand > 127 || operand < -127)
+	if (operand > 127 || operand < 0)
 		return -1;
-	int otr = 0;	
-	if (operand < 0){
-		otr = 1;
-		operand *= -1;
-	}
 	*value = 0;	
 	*value += command;
 	*value <<= 7;
 	*value += operand;
-	if (otr == 1)
-		*value *= -1;	
 	return 0;
 }
 
 int sc_commandDecode(int value, int * command, int * operand){
-	int otr = 0;	
-	if (value < 0)
-		otr = 1;
 	unsigned int u = value;
 	*operand = u & 0x7f;
-	if (otr == 1)
-		*operand *= -1;
 	u = value >> 7;
 	int com = 0;
 	com = u & 0x7f;
@@ -114,6 +103,7 @@ int sc_commandDecode(int value, int * command, int * operand){
 		*command = com;
 	else
 		return -1;
+	printOper(*command, *operand);
 	return 0;
 }
 
