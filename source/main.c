@@ -83,6 +83,8 @@ int main(){
 			setitimer(ITIMER_REAL, 0, NULL);
 		switch (a){
 			case KEY_right:
+				mt_gotoXY(1, 23);
+				printf("                        \n         ");
 				changePoint(1);				
 				break;
 			case KEY_down:

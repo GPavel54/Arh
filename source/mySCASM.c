@@ -1,21 +1,20 @@
-#include "mySimpleComputer.h"
+#include "mySCASM.h"
 #include "terminal.h"
-#include "addFunctions.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #define N 100
 
 int mem[100];
-extern uint8_t flags;
+uint8_t flags;
 int sc_memoryInit(){
 	for (int i = 0; i < N; i++){
 		mem[i] = 0;
 	}
-	extern struct memCell current;
+	/*extern struct memCell current;
 	current.pointer = 0;
 	current.x = 0;
-	current.y = 0;
+	current.y = 0;*/
 	return 0;
 }
 
@@ -105,7 +104,7 @@ int sc_commandDecode(int value, int * command, int * operand){
 		*command = com;
 	else
 		return -1;
-	printOper(*command, *operand);
+	//printOper(*command, *operand);
 	return 0;
 }
 

@@ -205,8 +205,13 @@ int ALU (int command, int operand){
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
+		if ((val & 16384 != 0) && (accumulator & 16384 != 0)){
+			accumulator &= 16383;
+			val &= 16383;
+		}
 		accumulator += val;
-		accumulator &= 0x7fff;		
+		accumulator &= 0x3fff;	
+		accumulator |= 16384;	
 		paintAcc(0);
 		return 0;
 	}
@@ -242,8 +247,9 @@ int ALU (int command, int operand){
 	if (command == 53){
 		int val = 0;
 		int err = sc_memoryGet(operand, &val);
-		if (err != 0)
-		accumulator |= val;
+		if (err == 0)
+		accumulator |= val;						
+		paintAcc(0);
 		return 0;	
 	}
 	return -1;
