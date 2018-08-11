@@ -3,7 +3,23 @@
 #include <string.h>
 #include "mySCASM.h"
 
+void deleteSpace(char * str){
+	char str2[20];
+	int j = 0;
+	for (int i = 0; i < strlen(str); i++){
+		if (str[i] == ' ')
+			continue;
+		else{
+			str2[j] = str[i];
+			j++;
+		}
+	}
+	str2[j] = '\0';
+	strcpy(str, str2);
+}
+
 int getCommand(char * command){
+	deleteSpace(command);
 	if (strcmp(command, "READ") == 0)
 		return 10;	
 	if (strcmp(command, "WRITE") == 0)
@@ -81,30 +97,33 @@ int main(int argv, char **args){
 			u++;   // для перемещения внутри line
 			y++;   //  для перемещения внутри  str
 		} while(str[y] != '\n');
-		printf("Line = %s\n", line);
+		//printf("Line = %s\n", line);
 		char strComm[20];
 		int add = 0;
 		char uy[20];
 		sscanf(line,"%d %s %s", &add, strComm, uy);
-		printf("%d\n%s\n%s\n", add, strComm, uy); 
 		line[u] = '\0';   //   завершаю строку
 		line[u + 1] = '\0';
 		line[u + 2] = '\0';
 		y++;   // пропускаю перенос строки с прошлой итерации
-		char cellC[2]; // здесь храню номер ячейки памяти
+		char cellC[3]; // здесь храню номер ячейки памяти
 		cellC[0] = line[0];
 		cellC[1] = line[1];
+		cellC[2] = '\0';
 		cell = atoi(cellC);
 		if (cell < 0 || cell > 99){
 			printf("Wrong cell value on line %d\n", j);
 			exit(EXIT_FAILURE);
 		}
 		strcpy(line, line + 2);
-		char operandC[2]; // здесь хранится операнд 
-		operandC[0] = line[strlen(line) - 2];
-		operandC[1] = line[strlen(line) - 1];
-		operand = atoi(operandC);
-		line[strlen(line) - 2] = '\0';
+		if (strcmp(strComm, "=") != 0){
+			operand = atoi(uy);
+			line[strlen(line) - 2] = '\0';
+		} else {
+			operand = atoi(uy);
+			deleteSpace(line);
+			line[1] = '\0';
+		}
 		command = getCommand(line);
 		if (command == -1){
 			printf("Wrong command on line %d\n", j);
@@ -131,7 +150,8 @@ int main(int argv, char **args){
 		}
 		mem[cell] = out; // Подготовка массива памяти
 	}
-	char memory[] = "RAM.b";
+	char memory[] = "../data/RAM.b";
 	int err = sc_memorySave(memory);
+	printf("Translation OK.\n");
 	return 0;
 }

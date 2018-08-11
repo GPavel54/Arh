@@ -200,7 +200,7 @@ void printReg(){
 }
 
 int ALU (int command, int operand){
-	if (command == 30){
+	if (command == 30){  //ADD
 		int val = 0;
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
@@ -208,38 +208,152 @@ int ALU (int command, int operand){
 		if ((val & 16384 != 0) && (accumulator & 16384 != 0)){
 			accumulator &= 16383;
 			val &= 16383;
+			accumulator += val;
+			accumulator &= 0x3fff;	
+			accumulator |= 16384;	
+			paintAcc(0);
+			return 0;
 		}
 		accumulator += val;
-		accumulator &= 0x3fff;	
-		accumulator |= 16384;	
+		accumulator &= 0x7fff;	
 		paintAcc(0);
 		return 0;
 	}
-	if (command == 31){
+	if (command == 31){  //SUB
 		int val = 0;
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
+		if ((val & 0x4000) != 0 && (accumulator & 0x4000) != 0){		
+			if ((val & 0x2000) != 0){
+				accumulator += (~val & 0x3fff) + 1;
+				accumulator &= 0x3fff;
+				accumulator |= 16384;					
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) == 0){
+				val &= 0x3fff;
+				accumulator &= 0x3fff;
+				accumulator -= val;
+				accumulator |= 16384; // включить бит не команда					
+				paintAcc(0);
+				return 0;
+			}
+		}
 		accumulator += (~val & 0x7fff) + 1;
-		accumulator &= 0x7fff;					
 		paintAcc(0);
 		return 0;
 	}
-	if (command == 32){
+	if (command == 32){  //DIVIDE
 		int val = 0;
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
-		accumulator /= val;					
+		if ((val & 0x4000) != 0 && (accumulator & 0x4000) != 0){ //проверка, если оба значения - целочисленные типы
+			if ((val & 0x2000) == 0 && (accumulator & 0x2000) == 0){
+				val &= 0x3fff;  // выключить первый бит(не команда)
+				accumulator &= 0x3fff; // выключить первый бит(не команда)
+				accumulator /= val;
+				accumulator &= 0x7fff; // удалить лишние биты, если таковые появились
+				accumulator |= 0x4000; // вернуть бит, обозначающий не команда					
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) != 0 && (accumulator & 0x2000) == 0){
+				val = ~val;
+				val++;
+				val &= 0x3fff;
+				accumulator &= 0x3fff;
+				accumulator /= val;
+				accumulator = ~accumulator; // установить, что число отрицательное
+				accumulator++;
+				accumulator &= 0x7fff;
+				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) == 0 && (accumulator & 0x2000) != 0){
+				accumulator = ~accumulator;
+				accumulator++;
+				accumulator &= 0x3fff;
+				val &= 0x3fff;
+				accumulator /= val;
+				accumulator = ~accumulator; // установить, что число отрицательное
+				accumulator++;
+				accumulator &= 0x7fff;
+				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) != 0 && (accumulator & 0x2000) != 0){
+				accumulator = ~accumulator;
+				accumulator++;
+				accumulator &= 0x3fff;
+				val = ~val;
+				val++;
+				val &= 0x3fff;
+				accumulator /= val;
+				accumulator &= 0x7fff;
+				accumulator |= 0x4000;
+				paintAcc(0);
+				return 0;
+			}
+		}
+		accumulator /= val;
+		accumulator &= 0x7fff;						
 		paintAcc(0);
 		return 0;	
 	}
-	if (command == 33){
+	if (command == 33){   //MUL
 		int val = 0;
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
-		accumulator *= operand;
+		if ((val & 0x4000) != 0 && (accumulator & 0x4000) != 0){ //проверка, если оба значения - целочисленные типы
+			if ((val & 0x2000) == 0 && (accumulator & 0x2000) == 0){
+				val &= 0x3fff;  // выключить первый бит(не команда)
+				accumulator &= 0x3fff; // выключить первый бит(не команда)
+				accumulator *= val;
+				accumulator &= 0x7fff; // удалить лишние биты, если таковые появились
+				accumulator |= 0x4000; // вернуть бит, обозначающий не команда					
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) != 0 && (accumulator & 0x2000) == 0){
+				val = ~val;
+				val++;
+				val &= 0x3fff;
+				accumulator &= 0x3fff;
+				accumulator *= val;
+				accumulator = ~accumulator; // установить, что число отрицательное
+				accumulator++;
+				accumulator &= 0x7fff;
+				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) == 0 && (accumulator & 0x2000) != 0){
+				accumulator = ~accumulator;
+				accumulator++;
+				accumulator &= 0x3fff;
+				val &= 0x3fff;
+				accumulator *= val;
+				accumulator = ~accumulator; // установить, что число отрицательное
+				accumulator++;
+				accumulator &= 0x7fff;
+				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
+				paintAcc(0);
+				return 0;
+			} else if ((val & 0x2000) != 0 && (accumulator & 0x2000) != 0){
+				accumulator = ~accumulator;
+				accumulator++;
+				accumulator &= 0x3fff;
+				val = ~val;
+				val++;
+				val &= 0x3fff;
+				accumulator *= val;
+				accumulator &= 0x7fff;
+				accumulator |= 0x4000;
+				paintAcc(0);
+				return 0;
+			}
+		}
+		accumulator *= val;
 		accumulator &= 0x7fff;						
 		paintAcc(0);	
 		return 0;

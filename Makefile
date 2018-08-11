@@ -15,6 +15,6 @@ addFunctions.o: source/addFunctions.c
 computer :
 	gcc -Wall -o comp temp/main.o temp/terminal.o temp/myBigChars.o temp/mySimpleComputer.o  temp/myReadkey.o temp/addFunctions.o
 clean:
-	rm -rf *.o
+	rm -rf temp/*.o
 withcode: 
 	gcc -Wall -o comp temp/main.o temp/terminal.o temp/myBigChars.o temp/mySimpleComputer.o temp/myReadkey.o temp/addFunctions.o -g
