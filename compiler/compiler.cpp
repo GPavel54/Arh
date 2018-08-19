@@ -6,8 +6,8 @@
 #include <cstdlib>
 #include <cctype>
 #include <algorithm>
-#define ITER vector<char>::iterator
 using namespace std;
+
 void deleteSpaces(string *);
 /**Функции, для работы с таблицей, в которой содержатся имена объявленных переменных, и их адреса**/
 void addToTable(string, int, vector<vector<string> >&); 
@@ -15,11 +15,15 @@ void printTable(vector<vector<string> >);
 string returnAdress(string , vector<vector<string> >); //возвращает адрес переданной переменной
 void addAdress(string&, int); // добавляет в итоговый ассемблерный файл номер строки, который является адресом ячейки памяти
 int varExist(string, vector<vector<string> > vect); 
+string createVar(char, vector<vector<string> >&, int *, string&);
 /********/
-int translateExpression(string, int *, vector<vector<string> >&, string&); // перевести выражение 
-int countParan(vector<char>);
 string itos(int);
-int stoi(string);
+//int stoi(string);
+int toRPN(string, vector<string>&); // перевести выражение в обратную польскую запись
+void addSpaces(string& str); // добавляет пробелы между скобками
+int isNumber(string str); // проверяет, является ли строка числом
+int isSign(char c); // проверяет, является ли символ допустимой в выражении операцией
+int getPrior(char c); // возвращает приоритет переданной операции
 
 int main(int argc, char ** argv){
 	string statements[] = {"INPUT", "GOTO", "PRINT", "REM", "LET"};
@@ -90,11 +94,15 @@ int main(int argc, char ** argv){
 			str.erase(str.begin(), str.begin() + str.find(statements[4]) + statements[4].length()); // оставляем только выражение
 			map[line] = memory;
 			int err = 0;
-			err = translateExpression(str, &memory, table, out);
+			vector<string> RPN;
+			err = toRPN(str, RPN);
 			if (err == -1){
-				cout << "Строка " << line + 1 << ", ошибка в выражении." << endl;
+				cout << "Строка :" << line + 1 << endl;
 				exit(EXIT_FAILURE);
 			}
+			for (auto it = RPN.begin(); it < RPN.end(); it++)
+				cout << *it;
+			cout << endl;
 		}
 		line++;
 	}
@@ -107,13 +115,13 @@ string itos(int p){
 	ss << p;
 	return ss.str();
 }
-
+/*
 int stoi(string p){
 	istringstream iss(p);
 	int val;
 	iss >> val;
 	return val;
-}
+}*/
 
 void addToTable(string str, int adr, vector<vector<string> >& vect){
 	vect.push_back(vector<string>(2));
@@ -173,93 +181,142 @@ void deleteSpaces(string * str){
 	}
 }
 
-ITER isParan(ITER it1, ITER it2){ // поиск скобки, соответствующей закрывающей
-	return find(it1, it2, '(');
-}
-
-int translateExpression(string str, int * memory, vector<vector<string> >& vect, string& out){
-	/* Блок считывания выражения в массив символов без пробелов */
-	stringstream ss(str);
-	string temp;
-	vector<char> tokens;
-	while (ss >> temp){
-		for (unsigned int i = 0; i < temp.length(); i++)
-			tokens.push_back(temp[i]);
-	}
-	/* ******* */
-	/* Проверка на правильное количество переменных и операций */
-	int size = countParan(tokens);
-	if (size == -1)
-		return -1;
-	/* ******* */
-	
-	int addMap[26] = {0}; //здесь хранятся переменные для промежуточных значений выражения
-	string addExp[26] = {""}; // здесь хранятся выражения, результат которых должен быть записан во временную переменную
-	ITER it = tokens.begin(), it1;
-	ITER rem;
-	ITER fst = it;  // чтобы отследить, изменился ли адрес скобки, при вызове следующий функции
-	while ((it = find(tokens.begin(), tokens.end(), '(')) != tokens.end()){
-		rem = it;
-		it1 = find(it, tokens.end(), ')');
-		if (it1 == tokens.end())
-			return -1;  // Не верно расположены скобки
-		while ((it = isParan(it + 1, it1)) != it1)
-			fst = it; // Поиск первой операции в скобках
-		/* копирования выражения в скобках */
-		char toDel[it1 - fst + sizeof(char)]; 
-		int y = 0;
-		it = fst;
-		for (; fst <= it1; fst++){
-			if (*fst != '(' && *fst != ')'){
-				toDel[y] = *fst;
-				y++;
-			}
+string returnAdress(char p1, vector<vector<string> >& vect, int * arr){
+	string ret = "";
+	if (islower(p1)){
+		if (arr[p1 - 'a'] == 0){
+			cout << "Wrong value." << endl;
+			return "";
 		}
-		toDel[y] = '\0';
-		/* ****** */
-		/* Обновление таблицы временных переменных */
-		for (int pt1 = 0; pt1 < 26; pt1++){
-			if (addMap[pt1] == 0){
-				addMap[pt1] = 1;
-				addExp[pt1] = toDel;
-				*it = 'a' + pt1;
-				break;
-			}
-		}
-		/* ***** */
-		tokens.erase(it + 1, it1 + 1);
-		cout << addMap[0] << "  -  " << addExp[0] << endl;
-		break;
+		addAdress(ret, arr[p1 - 'a']);
+	}else{
+		ret = p1;
+		if (returnAdress(ret, vect) == "")
+			return "";
+		ret = returnAdress(ret, vect);
 	}
-	for (ITER i1 = tokens.begin(); i1 != tokens.end(); i1++)
-		cout << *i1;
-	cout << endl;
-	exit(EXIT_SUCCESS);
-	return 0;	
-}
-
-int countParan(vector<char> vect){
-	int p1= 0, p2 = 0, p3 = 0, p4 = 0;
-	for (ITER it = vect.begin(); it != vect.end(); it++){
-		if (*it == '(')
-			p1++;
-		if (*it == ')')
-			p2++;
-		if (*it == '/')
-			p3++;
-		if (*it == '*')
-			p3++;
-		if (*it == '+')
-			p3++;
-		if (*it == '-')
-			p3++;
-		if (isalpha(*it))
-			p4++;
-		if (*it == '=')
-			p3++;
-	}
-	int ret = p3;
-	if ((p1 != p2) || (p4 != p3 + 1))
-		ret = -1;
 	return ret;
+}
+
+int toRPN(string expression, vector<string>& out){ 
+	string stack;
+	string temp;
+	addSpaces(expression);
+	stringstream ss(expression);
+	int i = 0;
+	if (expression.find("=") == string::npos){
+		cout << "В строке нету символа '='." << endl;
+		return -1;
+	}
+	while(ss >> temp){
+		if (i == 0){
+				if (islower(temp[0]) || isNumber(temp) || temp.length() != 1){
+					cout << "Выражение составлено неверно." << endl;
+					return -1; 
+				}
+			ss >> temp;
+			i++;
+			continue;
+		}
+		if (temp == ")"){
+			if (stack.find("(") == string::npos){
+				cout << "Неверно расставлены скобки." << endl; // скобки расставлены неверно
+				return -1;
+			}
+			while(stack[stack.size() - 1] != '('){
+				string tm = "";
+				tm.push_back(stack[stack.size() - 1]);
+				out.push_back(tm);
+				stack.pop_back();
+			}
+			stack.pop_back();
+		}
+		if (isNumber(temp)){  // значит это число
+			out.push_back(temp);
+			continue;
+		}else if (temp.length() != 1 || islower(temp[0])){
+			cout << "Выражение составлено неверно." << endl; // значит неправильно введено выражение
+			return -1;
+		} else if (!isSign(temp[0]) && temp != "(" && temp != ")"){ // значит это переменная
+			out.push_back(temp);
+			continue;
+		}
+		if (isSign(temp[0])){
+			while (getPrior(stack[stack.size() - 1]) >= getPrior(temp[0])){
+				string tm = "";
+				tm.push_back(stack[stack.size() - 1]);
+				out.push_back(tm);
+				stack.pop_back(); 
+			}
+			stack.push_back(temp[0]);
+		}
+		if (temp == "(")
+			stack.push_back(temp[0]);
+			continue;
+		
+	}
+	if (stack.find("(") != string::npos || stack.find(")") != string::npos){
+		cout << "Неверно расставлены скобки." << endl;
+		return -1;
+	}
+	while (stack.size() != 0){
+		string tm = "";
+		tm.push_back(stack[stack.size() - 1]);
+		out.push_back(tm);
+		stack.pop_back();
+	}
+	return 0;
+}
+
+string createVar(char p1, vector<vector<string> >& vect, int * memory, string& out){
+	addAdress(out, *memory);
+	out += "= 16384\n";
+	string toTab = " ";
+	toTab.resize(1);
+	toTab[0] = p1;
+	addToTable(toTab, *memory, vect);
+	toTab = "";
+	addAdress(toTab, *memory);
+	(*memory)++;
+	return toTab;
+}
+
+void addSpaces(string& str){
+	size_t si = 0;
+	while (str.find("(", si) != string::npos){
+		si = str.find("(", si);
+		str.replace(si, 1, "( ");
+		si++;
+	}
+	si = 0;
+	while (str.find(")", si) != string::npos){
+		si = str.find(")", si);
+		str.replace(si, 1, " )");
+		si += 2;
+	}
+}
+
+int isNumber(string str){
+	unsigned int i = 0;
+	while (isdigit(str[i]) && i < str.length())
+		i++;
+	if (i == str.length())
+		return 1;
+	return 0;
+}
+
+int isSign(char c){
+	if ((c == '/') || (c == '*') || (c == '|') || (c == '+') || (c == '-'))
+		return 1;
+	return 0;
+}
+
+int getPrior(char c){
+	if (c == '*' || c == '/')
+		return 3;
+	if (c == '+' || c == '-')
+		return 2;
+	if (c == '|')
+		return 1;
+	return 0;
 }
