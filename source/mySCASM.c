@@ -79,7 +79,7 @@ int sc_regGet(int reg, int * value){
 
 int sc_commandEncode(int command, int operand, int * value){
 	int ret = 1;	
-	if (command == 10 || command == 53 || command == 11 || command == 20 || command == 21 || (command < 34 && command > 29) || (command < 44 && command > 39) )
+	if (command == 10 || command == 53 || command == 55 || command == 11 || command == 20 || command == 21 || (command < 34 && command > 29) || (command < 44 && command > 39) )
 		ret = 0;
 	if (ret != 0)
 		return -1;

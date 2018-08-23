@@ -209,12 +209,14 @@ int ALU (int command, int operand){
 			accumulator &= 16383;
 			val &= 16383;
 			accumulator += val;
+			ISOVERFLOW
 			accumulator &= 0x3fff;	
 			accumulator |= 16384;	
 			paintAcc(0);
 			return 0;
 		}
 		accumulator += val;
+		ISOVERFLOW
 		accumulator &= 0x7fff;	
 		paintAcc(0);
 		return 0;
@@ -227,6 +229,7 @@ int ALU (int command, int operand){
 		if ((val & 0x4000) != 0 && (accumulator & 0x4000) != 0){		
 			if ((val & 0x2000) != 0){
 				accumulator += (~val & 0x3fff) + 1;
+				ISOVERFLOW
 				accumulator &= 0x3fff;
 				accumulator |= 16384;					
 				paintAcc(0);
@@ -235,12 +238,14 @@ int ALU (int command, int operand){
 				val &= 0x3fff;
 				accumulator &= 0x3fff;
 				accumulator -= val;
+				ISOVERFLOW
 				accumulator |= 16384; // включить бит не команда					
 				paintAcc(0);
 				return 0;
 			}
 		}
 		accumulator += (~val & 0x7fff) + 1;
+		ISOVERFLOW		
 		paintAcc(0);
 		return 0;
 	}
@@ -254,6 +259,7 @@ int ALU (int command, int operand){
 				val &= 0x3fff;  // выключить первый бит(не команда)
 				accumulator &= 0x3fff; // выключить первый бит(не команда)
 				accumulator /= val;
+				ISOVERFLOW
 				accumulator &= 0x7fff; // удалить лишние биты, если таковые появились
 				accumulator |= 0x4000; // вернуть бит, обозначающий не команда					
 				paintAcc(0);
@@ -264,6 +270,7 @@ int ALU (int command, int operand){
 				val &= 0x3fff;
 				accumulator &= 0x3fff;
 				accumulator /= val;
+				ISOVERFLOW				
 				accumulator = ~accumulator; // установить, что число отрицательное
 				accumulator++;
 				accumulator &= 0x7fff;
@@ -278,6 +285,7 @@ int ALU (int command, int operand){
 				accumulator /= val;
 				accumulator = ~accumulator; // установить, что число отрицательное
 				accumulator++;
+				ISOVERFLOW
 				accumulator &= 0x7fff;
 				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
 				paintAcc(0);
@@ -290,6 +298,7 @@ int ALU (int command, int operand){
 				val++;
 				val &= 0x3fff;
 				accumulator /= val;
+				ISOVERFLOW
 				accumulator &= 0x7fff;
 				accumulator |= 0x4000;
 				paintAcc(0);
@@ -297,6 +306,7 @@ int ALU (int command, int operand){
 			}
 		}
 		accumulator /= val;
+		ISOVERFLOW
 		accumulator &= 0x7fff;						
 		paintAcc(0);
 		return 0;	
@@ -310,7 +320,8 @@ int ALU (int command, int operand){
 			if ((val & 0x2000) == 0 && (accumulator & 0x2000) == 0){
 				val &= 0x3fff;  // выключить первый бит(не команда)
 				accumulator &= 0x3fff; // выключить первый бит(не команда)
-				accumulator *= val;
+				accumulator *= val;				
+				ISOVERFLOW
 				accumulator &= 0x7fff; // удалить лишние биты, если таковые появились
 				accumulator |= 0x4000; // вернуть бит, обозначающий не команда					
 				paintAcc(0);
@@ -323,6 +334,7 @@ int ALU (int command, int operand){
 				accumulator *= val;
 				accumulator = ~accumulator; // установить, что число отрицательное
 				accumulator++;
+				ISOVERFLOW
 				accumulator &= 0x7fff;
 				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
 				paintAcc(0);
@@ -332,9 +344,10 @@ int ALU (int command, int operand){
 				accumulator++;
 				accumulator &= 0x3fff;
 				val &= 0x3fff;
-				accumulator *= val;
+				accumulator *= val;				
 				accumulator = ~accumulator; // установить, что число отрицательное
 				accumulator++;
+				ISOVERFLOW
 				accumulator &= 0x7fff;
 				accumulator |= 0x6000; // вернуть бит, обозначающий не команда						
 				paintAcc(0);
@@ -347,6 +360,7 @@ int ALU (int command, int operand){
 				val++;
 				val &= 0x3fff;
 				accumulator *= val;
+				ISOVERFLOW
 				accumulator &= 0x7fff;
 				accumulator |= 0x4000;
 				paintAcc(0);
@@ -354,6 +368,7 @@ int ALU (int command, int operand){
 			}
 		}
 		accumulator *= val;
+		ISOVERFLOW
 		accumulator &= 0x7fff;						
 		paintAcc(0);	
 		return 0;
@@ -456,7 +471,7 @@ int CU(){
 			}
 		}
 		if (command == 41){
-			if ((accumulator & 24576) == 24576){
+			if ((accumulator & 24576) != 0){
 				if (operand > 99 || operand < 0){
 					sc_regSet(M ,1);
 					return -1;				
@@ -487,8 +502,24 @@ int CU(){
 			}
 			return 0;
 		}
-		if (command == 43){
+		if (command == 43){ 
 			needIncrement = 2;
+			return 0;
+		}
+		if (command == 55){ // JNS
+			if ((accumulator & 24576) == 16384){
+				if (operand > 99 || operand < 0){
+					sc_regSet(M ,1);
+					return -1;				
+				}
+				paintCell(current.x, current.y, current.pointer, cl_default);
+				needIncrement = 1;
+				current.pointer = operand;
+				current.x = operand % 10;
+				current.y = operand / 10;
+				instructionCounter = operand;
+				paintCell(current.x, current.y, current.pointer, cl_red);
+			}
 			return 0;
 		}
 	}
