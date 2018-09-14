@@ -139,7 +139,7 @@ int main(int argc, char ** argv){
 			if (check == 0){ // выделение памяти для переменной
 				addToTable(str, memory, table);
 				memory++;
-				out += "= 0\n"; //окончание выделение памяти переменной
+				out += "= 16384\n"; //окончание выделение памяти переменной
 			}
 			addAdress(out, memory);
 			out += "READ "; //команда ввода данных с устройства ввода-вывода
@@ -154,11 +154,6 @@ int main(int argc, char ** argv){
 				map[line] = memory;
 			addAdress(out, memory); //добавляет номер строки в ассемблерный файл
 			out += "JUMP ";
-			int toAdr = stoi(str);
-			if (toAdr > line || toAdr < 0){
-				cout << "Строка " << line << ", выход за границы памяти." << endl;
-				exit(EXIT_FAILURE);
-			}
 			out += "LA" + str; // добавляет номер строки к которой надо перейти
 			out += " \n";
 			memory++;
@@ -196,6 +191,7 @@ int main(int argc, char ** argv){
 		}else if (str.find(statements[6]) != string::npos){ // END
 			addAdress(out, memory);
 			out += "HALT 00\n";
+			map[line] = memory;
 			break;
 			memory++;
 		}
@@ -615,6 +611,8 @@ void addSpaces(string& str){
 
 int isNumber(string str){
 	unsigned int i = 0;
+	if (str.length() == 1 && str[0] == '-')
+		return 0;
 	while ((isdigit(str[i]) || str[i] == '-') && i < str.length())
 		i++;
 	if (i == str.length())

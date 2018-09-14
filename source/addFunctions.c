@@ -254,6 +254,10 @@ int ALU (int command, int operand){
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
+		if (val == 0 || val == 16384){
+			sc_regSet(O, 1);
+			return -1;
+		}
 		if ((val & 0x4000) != 0 && (accumulator & 0x4000) != 0){ //проверка, если оба значения - целочисленные типы
 			if ((val & 0x2000) == 0 && (accumulator & 0x2000) == 0){
 				val &= 0x3fff;  // выключить первый бит(не команда)
@@ -406,6 +410,7 @@ int CU(){
 		if (command == 10){
 			mt_gotoXY(1, 23);
 			int val = 0;
+			printf("Input value:");
 			scanf("%d", &val);
 			mt_gotoXY(1, 23);
 			printf("                             \n         ");
@@ -507,7 +512,7 @@ int CU(){
 			return 0;
 		}
 		if (command == 55){ // JNS
-			if ((accumulator & 24576) == 16384){
+			if ((accumulator & 24576) == 16384 && accumulator != 16384){
 				if (operand > 99 || operand < 0){
 					sc_regSet(M ,1);
 					return -1;				
