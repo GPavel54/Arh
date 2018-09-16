@@ -205,7 +205,7 @@ int ALU (int command, int operand){
 		int err = sc_memoryGet(operand, &val);
 		if (err != 0)
 			return -1;
-		if ((val & 16384 != 0) && (accumulator & 16384 != 0)){
+		if (((val & 16384) != 0) && ((accumulator & 16384) != 0)){
 			accumulator &= 16383;
 			val &= 16383;
 			accumulator += val;
@@ -239,7 +239,8 @@ int ALU (int command, int operand){
 				accumulator &= 0x3fff;
 				accumulator -= val;
 				ISOVERFLOW
-				accumulator |= 16384; // включить бит не команда					
+				accumulator &= 0x3fff;
+				accumulator |= 16384; // включить бит не команда				
 				paintAcc(0);
 				return 0;
 			}

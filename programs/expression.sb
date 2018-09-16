@@ -1,0 +1,7 @@
+00 LET M = 10
+01 LET N = 40
+02 LET A = M - N
+03 LET D = 14
+05 LET C = D * (B + A - (N + A)) * D + 7893
+06 PRINT C
+07 END

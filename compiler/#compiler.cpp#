@@ -278,7 +278,7 @@ string returnAdress(string p1, vector<vector<string> > vect){
 	for (unsigned int i = 0; i < vect.size(); i++){
 		if (vect[i][0] == p1){
 			string out;
-			if (vect[i][1].length() < 2)
+			if (vect[i][0].length() < 2)
 					out = '0' + vect[i][1];
 			else
 				out = vect[i][1];

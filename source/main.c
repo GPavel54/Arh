@@ -57,6 +57,8 @@ void sghandler(int signo){
 	current.y = 0;
 	current.pointer = 0;
 	instructionCounter = 0;
+	accumulator = 0;
+	paintAcc(0);
 	paintInst(0);
 	paintCell(current.x, current.y, current.pointer, cl_red);
 	mt_gotoXY(1, 23);
@@ -127,10 +129,10 @@ int main(){
 				printReg();
 				static struct itimerval nval;  // установка таймера
 				signal (SIGALRM, signalhandler);
-				nval.it_interval.tv_sec = 2;
-				nval.it_interval.tv_usec = 0;
-				nval.it_value.tv_sec = 1;
-				nval.it_value.tv_usec = 0;
+				nval.it_interval.tv_sec = 0;
+				nval.it_interval.tv_usec = 250000;
+				nval.it_value.tv_sec = 0;
+				nval.it_value.tv_usec = 250000;
 				setitimer(ITIMER_REAL, &nval, NULL); //конец установки таймера
 				stop = 1;				
 				while (stop == 1)
